@@ -213,52 +213,81 @@ class start:
         v = [ val, pos ]
         return v
 
-    def fneg(self, pos):
-        r = random.randint(0,100)
-        r=r/100
+    # This function is used for cell targets and false negs rate for cells observation compute
+    def cell_obs(self, pos, status):
         i = pos[0]
         j = pos[1]
-        val = self.false_negative_Array[i,j]
-        if val <= r:
-            return True
-        else:
-            return False
+        r = random.randint(0, 100)
+        if status == 'fneg':
+            rand_val_c = r/100
+            val = self.false_negative_Array[i,j]
+            if val <= rand_val_c:
+                return True
+
+        if status == 'prb_tar':
+            rand_val_c = r / 100
+            if rand_val_c <= self.targets[i][j]:
+                return True
+
+        return False
 
     def recompute_belief(self):
-        new_total_val = 0
+        # print(new_total_val)
         for i in range( 0 , len(self.belief_array) ):
             for j in range(0, len(self.belief_array)):
-                # print(i , "," , j ,  " | " , self.belief_array[i][j])
-                new_total_val = new_total_val + self.belief_array[i][j]
+                self.belief_array[i][j] = self.belief_array[i][j] / np.sum(self.belief_array)#new_total_val
 
-        print(new_total_val)
-        for i in range( 0 , len(self.belief_array) ):
-            for j in range(0, len(self.belief_array)):
-                self.belief_array[i][j] = self.belief_array[i][j] / new_total_val
-
-    def b_rule_1(self, max_cell):
+    def bayes_computation(self, max_cell, status):
         pos = max_cell[1]
         i = pos[0]
         j = pos[1]
-        val = max_cell[0]
-        self.belief_array[i][j] = self.belief_array[i][j] * self.false_negative_Array[i][j]
+        if status == "b_One":
+            val = max_cell[0]
+            self.belief_array[i][j] = self.false_negative_Array[i][j] * self.belief_array[i][j]
 
+        if status == "b_Two":
+            val = max_cell[0]
+            #self.belief_array[i][j] = (1 - self.false_negative_Array[i][j]) * self.belief_array[i][j]
+            # made it look cleaner and did this on the main board generation so dont need it here
+            self.belief_array[i][j] = self.targets[i][j] * self.belief_array[i][j]
 
-
-
+    # computing the probabilistic chance that the current open cell is in
     def start_rule_one(self):
+        iteration_count = 0
         while True:
+            iteration_count += 1
             max_cell = self.get_max_val( self.belief_array )
-            check = self.fneg(max_cell[1])
             print(max_cell[1] , " | " , self.target_cell)
 
-            if max_cell[1] == self.target_cell and check == False:
-                print("Target Found")
-                break
+            if max_cell[1] == self.target_cell: # checks if highest prob cell is target cell
+                if self.cell_obs(max_cell[1],'fneg') == True: #False:
+                    print("Target Found in Iteration: " , iteration_count)
+                    break
             else:
-                self.b_rule_1(max_cell) # if correct answer call recompute in b_rule_1
-                self.recompute_belief()
+                self.bayes_computation(max_cell, "b_One")
+                # normalize
+                for i in range(0, len(self.belief_array)):
+                    for j in range(0, len(self.belief_array)):
+                        self.belief_array[i][j] = self.belief_array[i][j] / np.sum(self.belief_array)  # new_total_val
+                #self.recompute_belief()
 
+    def start_rule_two(self):
+        iteration_count = 0
+        while True:
+            iteration_count += 1
+            max_cell = self.get_max_val( self.belief_array )
+            print(max_cell[1] , " | " , self.target_cell)
+            if max_cell[1] == self.target_cell: # checks if highest prob cell is target cell
+                if self.cell_obs(max_cell[1],'prb_tar') == True: #False:
+                    print("Target Found in Iteration: " , iteration_count)
+                    break
+            else:
+                self.bayes_computation(max_cell, "b_Two")
+                # normalize
+                for i in range(0, len(self.belief_array)):
+                    for j in range(0, len(self.belief_array)):
+                        self.belief_array[i][j] = self.belief_array[i][j] / np.sum(self.belief_array)  # new_total_val
+                #self.recompute_belief()
 
     def start_algorithm(self, obj):
 
@@ -285,7 +314,11 @@ class start:
 
         # Now that everything is set up for the environment
         random_index_i = random.randint(0,self.dimension)
+        if random_index_i == len(self.original_board_array):
+            random_index_i = random_index_i - 1
         random_index_j = random.randint(0, self.dimension)
+        if random_index_j == len(self.original_board_array):
+            random_index_j = random_index_j - 1
         self.set_target_cell(random_index_i , random_index_j)
 
         self.start_rule_one()
