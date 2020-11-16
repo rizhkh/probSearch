@@ -6,12 +6,14 @@ class start:
     PYGAMEWIDTH = 300  # 600   # Do not change this: This is window sizing
     PYGAMEHEIGHT = 300  # Do not change this: This is window sizing
 
-    dimension = 10
+    dimension = 0
     original_board_array = np.zeros((dimension, dimension), dtype=int)
     belief_array = np.zeros((dimension, dimension), dtype=float)
     false_negative_Array = np.zeros((dimension, dimension), dtype=float)
     targets = np.zeros((dimension, dimension), dtype=float)
     target_cell = None
+    cell_distance_array = np.zeros((dimension, dimension), dtype=float)
+    cell_distance_array_cost = np.zeros((dimension, dimension), dtype=float)
 
     row = 0  # row
     col = 0  # col
@@ -19,51 +21,34 @@ class start:
     box_width = 12
     box_height = 12
 
-    board_array = np.zeros((0, 0), dtype=int)
-    board_array_2 = np.zeros((0, 0), dtype=int)
-    #board_array = np.zeros((0, 0), dtype=object)
-    screen = None
+    screen = None   # For Graphical setup for the canvas
     screen_two = None
 
     list_of_all_rects = []
-
-    recent_clicked_rect_x = None
-    recent_clicked_rect_y = None
-
-    environment_class = None
-    agent_class = None
 
     total_mines = 0
 
 
     row = 0  # row
     col = 0  # col
-    mine_density = None
+    board_dimension = None
 
-    def __init__(self, scree_one, r , c, mines):
+    def __init__(self, scree_one, r , c, dim):
         self.screen = scree_one
         self.row = r
         self.col = c
-        self.mine_density = mines
-        orignal_board_array = np.zeros((self.mine_density, self.mine_density), dtype=float)
+        self.board_dimension = dim
+        self.dimension = dim
+        self.original_board_array = np.zeros((self.board_dimension, self.board_dimension), dtype=float)
+        self.belief_array = np.zeros((self.dimension, self.dimension), dtype=float)
+        self.false_negative_Array = np.zeros((self.dimension, self.dimension), dtype=float)
+        self.targets = np.zeros((self.dimension, self.dimension), dtype=float)
+        self.cell_distance_array = np.zeros((self.dimension, self.dimension), dtype=float)
+        self.cell_distance_array_cost = np.zeros((self.dimension, self.dimension), dtype=float)
 
 
     def get_arr(self):
         return self.board_array
-
-    # def get_all_rects(self):
-    #     return self.environment_class.get_all_rects() #self.list_of_all_rects
-
-    def highlight_board(self,i,j):
-        # canvas_arr_i = i * 20  # the reason it is being multiplied is because the cell size is set to 20 - if its the orignal value then it causes GUI problems
-        # canvas_arr_j = j * 20
-        status = self.environment_class.get_cell_value(self.board_array,i,j)
-        if status != 1:
-            val = self.environment_class.get_clue(self.board_array,i,j)
-            self.environment_class.color_cell(str(val), i, j,0)
-        elif status == 1:   # IF THE CELL IS A MINE
-            self.total_mines += 1
-            self.environment_class.color_cell('', i, j,1)
 
     def generate_tiles_gui(self, prob, i , j):
 
@@ -174,29 +159,6 @@ class start:
         #for advanced algorithm i worte
         self.agent_class.traverse(safe_cells_to_traverse) # for my own aglorithm
 
-    def forSimpleWindow(self):
-        for i in range(0 , len( self.board_array_2) ):
-            for j in range(0, len( self.board_array_2 )):
-                status = self.environment_class.get_cell_value(self.board_array_2,i,j)
-
-    def highlight_board_empty(self,i,j):
-        # canvas_arr_i = i * 20  # the reason it is being multiplied is because the cell size is set to 20 - if its the orignal value then it causes GUI problems
-        # canvas_arr_j = j * 20
-        status = self.environment_class.get_cell_value(self.board_array,i,j)
-        if status != 1:
-            #color = (150, 150, 150)
-            val = self.environment_class.get_clue(self.board_array,i,j)
-            #self.environment_class.rect_clicked( str(val) , color, canvas_arr_i,canvas_arr_j)
-            if val == 0 :
-                self.environment_class.color_cell('', i, j, 0)
-            else:
-                self.environment_class.color_cell(str(val), i, j,0)
-        elif status == 1:   # IF THE CELL IS A MINE
-            color = (255, 0, 0)
-            self.total_mines += 1
-            #self.environment_class.rect_clicked('', color, canvas_arr_i, canvas_arr_j)
-            self.environment_class.color_cell('', i, j,1)
-
     # This function gets max value from any passed array
     def get_max_val(self, passed_array):
         temp = -9
@@ -289,6 +251,130 @@ class start:
                         self.belief_array[i][j] = self.belief_array[i][j] / np.sum(self.belief_array)  # new_total_val
                 #self.recompute_belief()
 
+    def compute_cell_dist_md(self, arr_cell_distance, arr_cell_cost):
+        for i in range(0, len(arr_cell_distance)):
+            for j in range(0, len(arr_cell_distance)):
+                arr_cell_distance[i][j] = self.belief_array[i][j] * self.targets[i][j] / arr_cell_cost[i][j]
+
+    def get_val(self, array_name,search_i, search_j):
+        if search_i>= 0 and search_i<self.dimension and search_j>= 0 and search_j<self.dimension:
+            if array_name[search_i][search_j]:
+                return array_name[search_i][search_j]
+        else:
+            return -1000
+
+    def start_rule_md(self):
+        # My understanding: Compute manhattan distance and then determine whether you want to search current cell
+        # or move in the direction of cell from manhattan distance and choose to move neighboring cell
+        # repeat
+
+        iteration_count = 0
+        cell_position = [0,0]
+        vall = self.get_val(self.belief_array,0, 0)
+        max_cell = [vall, cell_position]
+        check = 1
+        while True:
+            iteration_count += 1
+            #max_cell = self.get_max_val( self.belief_array )
+
+            # compute cost of travelling in cells
+            for i in range( 0 , self.board_dimension):
+                for j in range( 0 , self.board_dimension):
+                    self.cell_distance_array_cost[i][j] = ( abs(i - cell_position[0]) + abs(j - cell_position[1]) )
+            # Setting the value of current cells cost as we do not want to be confused in future computations
+            self.cell_distance_array_cost[ cell_position[0] ][ cell_position[1] ] = -9999
+            if check == 1:
+                print("[CURRENT PROCESSED CELL: " , max_cell[1] , "]")
+            if check == 0 :
+                print("moving")
+            if max_cell[1] == self.target_cell:# and check==1: # checks if highest prob cell is target cell
+                if self.cell_obs(max_cell[1],'fneg') == True: #False:
+                    print("current cell:  " , cell_position)
+                    print("Target Found in Iteration: " , iteration_count)
+                    break
+
+                #add code: if else condition runs remove [0] from desc and set max_cell as desc[1]
+
+            else:
+                # computing the (manhattan distance from current location)/(probability
+                # of finding target in that cell)
+                self.compute_cell_dist_md(self.cell_distance_array, self.cell_distance_array_cost)
+                self.cell_distance_array[ cell_position[0] ][ cell_position[1] ] = self.belief_array[i][j] * self.targets[i][j]
+
+                # max_cell = self.get_max_val(self.cell_distance_array)
+                # print("max: " , max_cell)
+
+                self.bayes_computation(max_cell, "b_Two")
+                for i in range(0, len(self.belief_array)):
+                    for j in range(0, len(self.belief_array)):
+                        self.belief_array[i][j] = self.belief_array[i][j] / np.sum(self.belief_array)  # new_total_val
+
+                cell_position = max_cell[1]
+
+                #max_cell = self.get_max_val(self.belief_array)
+
+                desc = []
+                index_i = cell_position[0]
+                index_j = cell_position[1]
+
+                current_processed_cell = self.get_val(self.cell_distance_array, index_i,index_j)
+                cpc = [ current_processed_cell, [index_i, index_j] ]
+                desc.append(cpc)
+
+                cell_up = self.get_val(self.cell_distance_array, index_i-1, index_j)
+                cu = [cell_up, [index_i-1, index_j]]
+                desc.append(cu)
+
+                cell_down = self.get_val(self.cell_distance_array, index_i+1, index_j)
+                cd = [cell_down, [ index_i+1, index_j ]]
+                desc.append(cd)
+
+                cell_left = self.get_val(self.cell_distance_array, index_i, index_j-1)
+                cl = [cell_left, [index_i, index_j-1]]
+                desc.append(cl)
+
+                cell_right = self.get_val(self.cell_distance_array, index_i, index_j+1)
+                cr = [cell_right, [index_i, index_j+1]]
+                desc.append(cr)
+
+
+                desc.sort(reverse=True)
+
+                print(desc)
+                f = desc[0]
+                max_cell = f
+
+                #
+                # # check if current cell is highest prob
+                # first_val = desc[0]
+                # print(desc)
+                # # print("FIRST VAL ___________________ : " , first_val)
+                # if first_val[1] == [cell_position[0], cell_position[1]]:
+                #     print("CURRENT CELL HAS THE HIGHEST PROB")
+                #     print("current cell: ", cell_position)
+                #     cell_position =[cell_position[0], cell_position[1]]
+                #     print("will search this cell: " , cell_position)
+                #     vall = self.get_val(self.cell_distance_array, cell_position[0], cell_position[1])
+                #     max_cell = [vall , cell_position]
+                #     check = 1
+                # else:
+                #     first_val = desc[0]
+                #     print("current cell: " , cell_position)
+                #     cell_position = first_val[1]    # [1] is the position, index
+                #     print("moving to neighbor cell WE ARE NOT SEARCHING: " , cell_position)
+                #     check = 0
+
+
+                # now check if the prob of current cell is higher or prob of neighboring cells is higher - if higher
+                # move to neighboring cells
+                # if current cell is higher search
+
+
+                # for i in range(0 , len(self.cell_distance_array) ):
+                #     for j in range(0 , len(self.cell_distance_array) ):
+                #         self.cell_distance_array[i][j] = self.belief_array[i][j] * self.targets[i][j] / self.cell_distance_array_cost[i][j]
+
+
     def start_algorithm(self, obj):
 
 
@@ -299,16 +385,6 @@ class start:
 
         pygame.display.set_caption("Search and Destroy", "SD")
         pygame.display.flip()
-        # self.environment_class = environment(self.screen, self.board_array, obj, self.box_height, self.box_width , self.row , self.col , self.mine_density)
-        # self.environment_class.set_mine_count( self.mine_density )
-        # self.board_array = self.environment_class.add_mines_randomly(self.board_array)
-        # self.environment_class.generate_board(self.board_array)
-        # self.board_array_2 = np.copy(self.board_array)
-        # print(self.board_array) # shows map where the mines are
-        #
-        # self.agent_class = Agnt( self.board_array , self.row, self.col, self.box_height, self.box_width)
-        # self.agent_class.set_environment_obj(self.environment_class)    # because of this method agent class can use environment methods now
-        # self.agent_class.init_all_cells()
 
         self.generate_board()
 
@@ -321,6 +397,10 @@ class start:
             random_index_j = random_index_j - 1
         self.set_target_cell(random_index_i , random_index_j)
 
-        self.start_rule_one()
+        #self.start_rule_one()
+
+        #self.start_rule_two()
+
+        self.start_rule_md()
 
         pygame.display.flip()
