@@ -254,7 +254,7 @@ class start:
     def compute_cell_dist_md(self, arr_cell_distance, arr_cell_cost):
         for i in range(0, len(arr_cell_distance)):
             for j in range(0, len(arr_cell_distance)):
-                arr_cell_distance[i][j] = self.belief_array[i][j] * self.targets[i][j] / arr_cell_cost[i][j]
+                arr_cell_distance[i][j] = (self.belief_array[i][j] * self.targets[i][j]) / arr_cell_cost[i][j]
 
     def get_val(self, array_name,search_i, search_j):
         if search_i>= 0 and search_i<self.dimension and search_j>= 0 and search_j<self.dimension:
@@ -269,6 +269,7 @@ class start:
         # repeat
 
         iteration_count = 0
+        vis = []
         cell_position = [0,0]
         vall = self.get_val(self.belief_array,0, 0)
         max_cell = [vall, cell_position]
@@ -282,16 +283,17 @@ class start:
                 for j in range( 0 , self.board_dimension):
                     self.cell_distance_array_cost[i][j] = ( abs(i - cell_position[0]) + abs(j - cell_position[1]) )
             # Setting the value of current cells cost as we do not want to be confused in future computations
-            self.cell_distance_array_cost[ cell_position[0] ][ cell_position[1] ] = -9999
-            if check == 1:
-                print("[CURRENT PROCESSED CELL: " , max_cell[1] , "]")
-            if check == 0 :
-                print("moving")
-            if max_cell[1] == self.target_cell:# and check==1: # checks if highest prob cell is target cell
-                if self.cell_obs(max_cell[1],'fneg') == True: #False:
-                    print("current cell:  " , cell_position)
-                    print("Target Found in Iteration: " , iteration_count)
-                    break
+            self.cell_distance_array_cost[ cell_position[0] ][ cell_position[1] ] = 99999
+
+            print(">>>>>>>>> [CURRENT PROCESSED CELL: ", max_cell[1], "] ----- target cell:" , self.target_cell)
+
+            #if max_cell[1] == self.target_cell:# and self.cell_obs(max_cell[1],'fneg') == True:# and check==1: # checks if highest prob cell is target cell
+            if max_cell[1] == self.target_cell and self.cell_obs(max_cell[1],'fneg') == True:# and check==1: # checks if highest prob cell is target cell
+                print(">>>>>>>>>>>>>>>>>>>> ##################")
+                #if self.cell_obs(max_cell[1],'fneg') == True: #False:
+                print("current cell:  " , cell_position)
+                print("Target Found in Iteration: " , iteration_count)
+                break
 
                 #add code: if else condition runs remove [0] from desc and set max_cell as desc[1]
 
@@ -303,77 +305,64 @@ class start:
 
                 # max_cell = self.get_max_val(self.cell_distance_array)
                 # print("max: " , max_cell)
+                # print("max cell compute before: " , max_cell)
 
                 self.bayes_computation(max_cell, "b_Two")
                 for i in range(0, len(self.belief_array)):
                     for j in range(0, len(self.belief_array)):
                         self.belief_array[i][j] = self.belief_array[i][j] / np.sum(self.belief_array)  # new_total_val
 
+                # print("max cell compute AFTER: ", max_cell)
+                prev_pos = cell_position
                 cell_position = max_cell[1]
 
                 #max_cell = self.get_max_val(self.belief_array)
 
-                desc = []
-                index_i = cell_position[0]
-                index_j = cell_position[1]
+                # now get the cell with the min score in cell_distance_array and travel to it
+                # this gets min value index from cell_dist_arr
+                min_val = np.where( self.cell_distance_array == np.amin( self.cell_distance_array ))
+                index_min_pos = list(zip(min_val[0], min_val[1]))
+                imp_i = min_val[0]
+                imp_i = imp_i[0]
+                imp_j = min_val[1]
+                imp_j = imp_j[0]
+                br_val = [imp_i,imp_j]
 
-                current_processed_cell = self.get_val(self.cell_distance_array, index_i,index_j)
-                cpc = [ current_processed_cell, [index_i, index_j] ]
-                desc.append(cpc)
+                if br_val in vis:
+                    print("Already visited: " , br_val )
+                    #self.cell_distance_array[imp_i][imp_j] = 1000 #self.cell_distance_array[imp_i][imp_j] + 1
+                    self.cell_distance_array[imp_i][imp_j] = self.cell_distance_array[imp_i][imp_j] + 1
+                    check = 0
+                    while check==0:
+                        min_val = np.where(self.cell_distance_array == np.amin(self.cell_distance_array))
+                        index_min_pos = list(zip(min_val[0], min_val[1]))
+                        imp_i = min_val[0]
+                        imp_i = imp_i[0]
+                        imp_j = min_val[1]
+                        imp_j = imp_j[0]
+                        br_val = [imp_i, imp_j]
+                        print(br_val , " " , self.cell_distance_array[imp_i][imp_j])
+                        if br_val not in vis:
+                            vis.append(br_val)
+                            check = 1
+                        if br_val in vis:
+                            #self.cell_distance_array[imp_i][imp_j] = 1000
+                            self.cell_distance_array[imp_i][imp_j] = self.cell_distance_array[imp_i][imp_j] + 1
+                    print("New cell: ", br_val)
+                    print("visited cells: " , vis , " ------------------------------------------------------")
+                    print()
 
-                cell_up = self.get_val(self.cell_distance_array, index_i-1, index_j)
-                cu = [cell_up, [index_i-1, index_j]]
-                desc.append(cu)
+                else:
+                    print("Next Cell: ", br_val)
+                    vis.append(br_val)
 
-                cell_down = self.get_val(self.cell_distance_array, index_i+1, index_j)
-                cd = [cell_down, [ index_i+1, index_j ]]
-                desc.append(cd)
-
-                cell_left = self.get_val(self.cell_distance_array, index_i, index_j-1)
-                cl = [cell_left, [index_i, index_j-1]]
-                desc.append(cl)
-
-                cell_right = self.get_val(self.cell_distance_array, index_i, index_j+1)
-                cr = [cell_right, [index_i, index_j+1]]
-                desc.append(cr)
-
-
-                desc.sort(reverse=True)
-
-                print(desc)
-                f = desc[0]
-                max_cell = f
-
-                #
-                # # check if current cell is highest prob
-                # first_val = desc[0]
-                # print(desc)
-                # # print("FIRST VAL ___________________ : " , first_val)
-                # if first_val[1] == [cell_position[0], cell_position[1]]:
-                #     print("CURRENT CELL HAS THE HIGHEST PROB")
-                #     print("current cell: ", cell_position)
-                #     cell_position =[cell_position[0], cell_position[1]]
-                #     print("will search this cell: " , cell_position)
-                #     vall = self.get_val(self.cell_distance_array, cell_position[0], cell_position[1])
-                #     max_cell = [vall , cell_position]
-                #     check = 1
-                # else:
-                #     first_val = desc[0]
-                #     print("current cell: " , cell_position)
-                #     cell_position = first_val[1]    # [1] is the position, index
-                #     print("moving to neighbor cell WE ARE NOT SEARCHING: " , cell_position)
-                #     check = 0
-
-
-                # now check if the prob of current cell is higher or prob of neighboring cells is higher - if higher
-                # move to neighboring cells
-                # if current cell is higher search
-
-
-                # for i in range(0 , len(self.cell_distance_array) ):
-                #     for j in range(0 , len(self.cell_distance_array) ):
-                #         self.cell_distance_array[i][j] = self.belief_array[i][j] * self.targets[i][j] / self.cell_distance_array_cost[i][j]
-
+                md = (abs(imp_i - cell_position[0]) + abs(imp_j  - cell_position[1]))
+                iteration_count = iteration_count + md
+                print("It would take ", md, " steps to reach " , index_min_pos)
+                #max_cell = [self.get_val(self.belief_array, imp_i, imp_j) , [imp_i, imp_j]]
+                max_cell = [self.belief_array[imp_i][imp_j], [imp_i, imp_j]]
+                print("     New max cell : " , max_cell)
+                print()
 
     def start_algorithm(self, obj):
 
