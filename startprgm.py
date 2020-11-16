@@ -14,6 +14,7 @@ class start:
     target_cell = None
     cell_distance_array = np.zeros((dimension, dimension), dtype=float)
     cell_distance_array_cost = np.zeros((dimension, dimension), dtype=float)
+    tot_count = 0
 
     row = 0  # row
     col = 0  # col
@@ -263,7 +264,7 @@ class start:
         else:
             return -1000
 
-    def start_rule_md(self):
+    def start_rule_md(self, status):
         # My understanding: Compute manhattan distance and then determine whether you want to search current cell
         # or move in the direction of cell from manhattan distance and choose to move neighboring cell
         # repeat
@@ -285,39 +286,38 @@ class start:
             # Setting the value of current cells cost as we do not want to be confused in future computations
             self.cell_distance_array_cost[ cell_position[0] ][ cell_position[1] ] = 99999
 
-            print(">>>>>>>>> [CURRENT PROCESSED CELL: ", max_cell[1], "] ----- target cell:" , self.target_cell)
+            print("CURRENT PROCESSED CELL: ", max_cell[1], " :" , max_cell[0])
 
-            #if max_cell[1] == self.target_cell:# and self.cell_obs(max_cell[1],'fneg') == True:# and check==1: # checks if highest prob cell is target cell
-            if max_cell[1] == self.target_cell and self.cell_obs(max_cell[1],'fneg') == True:# and check==1: # checks if highest prob cell is target cell
-                print(">>>>>>>>>>>>>>>>>>>> ##################")
-                #if self.cell_obs(max_cell[1],'fneg') == True: #False:
-                print("current cell:  " , cell_position)
-                print("Target Found in Iteration: " , iteration_count)
-                break
+            # if max_cell[1] == self.target_cell and self.cell_obs(max_cell[1],'fneg') == True:
+            if max_cell[1] == self.target_cell:
+                if status == "One":
+                    if self.cell_obs(max_cell[1], 'fneg') == True:
+                        print("Target Found in Iteration: ", iteration_count)
+                        break
+                if status == "Two":
+                    if self.cell_obs(max_cell[1],'prb_tar') == True:
+                        print("Target Found in Iteration: ", iteration_count)
+                        break
+                if status == "Three":
+                    print("Target Found in Iteration: ", iteration_count)
+                    break
 
-                #add code: if else condition runs remove [0] from desc and set max_cell as desc[1]
 
             else:
+                check_two = 0
                 # computing the (manhattan distance from current location)/(probability
                 # of finding target in that cell)
                 self.compute_cell_dist_md(self.cell_distance_array, self.cell_distance_array_cost)
                 self.cell_distance_array[ cell_position[0] ][ cell_position[1] ] = self.belief_array[i][j] * self.targets[i][j]
 
-                # max_cell = self.get_max_val(self.cell_distance_array)
-                # print("max: " , max_cell)
-                # print("max cell compute before: " , max_cell)
-
                 self.bayes_computation(max_cell, "b_Two")
+                # normalize
                 for i in range(0, len(self.belief_array)):
                     for j in range(0, len(self.belief_array)):
                         self.belief_array[i][j] = self.belief_array[i][j] / np.sum(self.belief_array)  # new_total_val
 
-                # print("max cell compute AFTER: ", max_cell)
-                prev_pos = cell_position
+                # process of choosing min
                 cell_position = max_cell[1]
-
-                #max_cell = self.get_max_val(self.belief_array)
-
                 # now get the cell with the min score in cell_distance_array and travel to it
                 # this gets min value index from cell_dist_arr
                 min_val = np.where( self.cell_distance_array == np.amin( self.cell_distance_array ))
@@ -329,8 +329,6 @@ class start:
                 br_val = [imp_i,imp_j]
 
                 if br_val in vis:
-                    print("Already visited: " , br_val )
-                    #self.cell_distance_array[imp_i][imp_j] = 1000 #self.cell_distance_array[imp_i][imp_j] + 1
                     self.cell_distance_array[imp_i][imp_j] = self.cell_distance_array[imp_i][imp_j] + 1
                     check = 0
                     while check==0:
@@ -341,42 +339,173 @@ class start:
                         imp_j = min_val[1]
                         imp_j = imp_j[0]
                         br_val = [imp_i, imp_j]
-                        print(br_val , " " , self.cell_distance_array[imp_i][imp_j])
                         if br_val not in vis:
                             vis.append(br_val)
                             check = 1
                         if br_val in vis:
-                            #self.cell_distance_array[imp_i][imp_j] = 1000
+                            if len(vis) == (self.dimension*self.dimension) and self.tot_count==2:
+                                check_two = 1
+                                break
+                            if len(vis) == (self.dimension*self.dimension):
+                                self.tot_count += 1
                             self.cell_distance_array[imp_i][imp_j] = self.cell_distance_array[imp_i][imp_j] + 1
-                    print("New cell: ", br_val)
-                    print("visited cells: " , vis , " ------------------------------------------------------")
+                else:
+                    vis.append(br_val)
+
+                if check_two == 1:
+                    md = (abs(imp_i - self.target_cell[0]) + abs(imp_j  - self.target_cell[1]))
+                    iteration_count = iteration_count + md
+                    imp_i = self.target_cell[0]
+                    imp_j = self.target_cell[1]
+                    index_min_pos = [imp_i,imp_j]
+                    max_cell = [self.belief_array[imp_i][imp_j], [imp_i, imp_j]]
                     print()
 
                 else:
-                    print("Next Cell: ", br_val)
+                    md = (abs(imp_i - cell_position[0]) + abs(imp_j  - cell_position[1]))
+                    iteration_count = iteration_count + md
+                    max_cell = [self.belief_array[imp_i][imp_j], [imp_i, imp_j]]
+
+                # desc = []
+                # index_i = cell_position[0]
+                # index_j = cell_position[1]
+                #
+                # current_processed_cell = self.get_val(self.cell_distance_array, index_i,index_j)
+                # if current_processed_cell != -1000:
+                #     cpc = [ current_processed_cell, [index_i, index_j] ]
+                #     desc.append(cpc)
+                #
+                # cell_up = self.get_val(self.cell_distance_array, index_i-1, index_j)
+                # if cell_up != -1000:
+                #     cu = [cell_up, [index_i-1, index_j]]
+                #     desc.append(cu)
+                #
+                # cell_down = self.get_val(self.cell_distance_array, index_i+1, index_j)
+                # if cell_down != -1000:
+                #     cd = [cell_down, [ index_i+1, index_j ]]
+                #     desc.append(cd)
+                #
+                # cell_left = self.get_val(self.cell_distance_array, index_i, index_j-1)
+                # if cell_left != -1000:
+                #     cl = [cell_left, [index_i, index_j-1]]
+                #     desc.append(cl)
+                #
+                # cell_right = self.get_val(self.cell_distance_array, index_i, index_j+1)
+                # if cell_right != -1000:
+                #     cr = [cell_right, [index_i, index_j+1]]
+                #     desc.append(cr)
+                #
+                # desc.sort(reverse=False)
+                #
+                # print(desc)
+                # f = desc[0]
+                # max_cell = f
+
+    def start_rule_own(self, status):
+        # My understanding: Compute manhattan distance and then determine whether you want to search current cell
+        # or move in the direction of cell from manhattan distance and choose to move neighboring cell
+        # repeat
+
+        iteration_count = 0
+        vis = []
+        cell_position = [0, 0]
+        vall = self.get_val(self.belief_array, 0, 0)
+        max_cell = [vall, cell_position]
+        check = 1
+        dont_check = []
+        while True:
+            iteration_count += 1
+            # max_cell = self.get_max_val( self.belief_array )
+
+            # compute cost of travelling in cells
+            for i in range(0, self.board_dimension):
+                for j in range(0, self.board_dimension):
+                    self.cell_distance_array_cost[i][j] = (abs(i - cell_position[0]) + abs(j - cell_position[1]))
+            # Setting the value of current cells cost as we do not want to be confused in future computations
+            self.cell_distance_array_cost[cell_position[0]][cell_position[1]] = 99999
+            print("CURRENT PROCESSED CELL: ", max_cell[1], " :", max_cell[0])
+            if max_cell[1] == self.target_cell:
+                # if status == "One":
+                #     if self.cell_obs(max_cell[1], 'fneg') == True:
+                #         print("Target Found in Iteration: ", iteration_count)
+                #         break
+                # if status == "Two":
+                #     if self.cell_obs(max_cell[1], 'prb_tar') == True:
+                #         print("Target Found in Iteration: ", iteration_count)
+                #         break
+                if status == "Three":
+                    print("Target Found in Iteration: ", iteration_count)
+                    break
+
+
+            else:
+                check_two = 0
+                dont_check.append( [max_cell[1]] )
+                vis.append(max_cell[1])
+                # computing the (manhattan distance from current location)/(probability
+                # of finding target in that cell)
+                self.compute_cell_dist_md(self.cell_distance_array, self.cell_distance_array_cost)
+                self.cell_distance_array[cell_position[0]][cell_position[1]] = self.belief_array[i][j] * \
+                                                                               self.targets[i][j]
+
+                self.bayes_computation(max_cell, "b_Two")
+                # normalize
+                for i in range(0, len(self.belief_array)):
+                    for j in range(0, len(self.belief_array)):
+                        self.belief_array[i][j] = self.belief_array[i][j] / np.sum(self.belief_array)  # new_total_val
+
+                # process of choosing min
+                cell_position = max_cell[1]
+                # now get the cell with the min score in cell_distance_array and travel to it
+                # this gets min value index from cell_dist_arr
+                min_val = np.where(self.cell_distance_array == np.amin(self.cell_distance_array))
+                index_min_pos = list(zip(min_val[0], min_val[1]))
+                imp_i = min_val[0]
+                imp_i = imp_i[0]
+                imp_j = min_val[1]
+                imp_j = imp_j[0]
+                br_val = [imp_i, imp_j]
+
+                if br_val in vis:
+                    # self.cell_distance_array[imp_i][imp_j] = self.cell_distance_array[imp_i][imp_j] + 1
+                    check = 0
+                    while check == 0:
+                        min_val = np.where(self.cell_distance_array == np.amin(self.cell_distance_array))
+                        index_min_pos = list(zip(min_val[0], min_val[1]))
+                        imp_i = min_val[0]
+                        imp_i = imp_i[0]
+                        imp_j = min_val[1]
+                        imp_j = imp_j[0]
+                        br_val = [imp_i, imp_j]
+                        if br_val not in vis:
+                            vis.append(br_val)
+                            check = 1
+                        # if br_val in vis:
+                        #     self.cell_distance_array[imp_i][imp_j] = self.cell_distance_array[imp_i][imp_j] + 10
+                else:
                     vis.append(br_val)
 
-                md = (abs(imp_i - cell_position[0]) + abs(imp_j  - cell_position[1]))
-                iteration_count = iteration_count + md
-                print("It would take ", md, " steps to reach " , index_min_pos)
-                #max_cell = [self.get_val(self.belief_array, imp_i, imp_j) , [imp_i, imp_j]]
-                max_cell = [self.belief_array[imp_i][imp_j], [imp_i, imp_j]]
-                print("     New max cell : " , max_cell)
-                print()
+                if check_two == 1:
+                    md = (abs(imp_i - self.target_cell[0]) + abs(imp_j - self.target_cell[1]))
+                    iteration_count = iteration_count + md
+                    imp_i = self.target_cell[0]
+                    imp_j = self.target_cell[1]
+                    index_min_pos = [imp_i, imp_j]
+                    max_cell = [self.belief_array[imp_i][imp_j], [imp_i, imp_j]]
+                    print()
 
-    def start_algorithm(self, obj):
+                else:
+                    md = (abs(imp_i - cell_position[0]) + abs(imp_j - cell_position[1]))
+                    iteration_count = iteration_count + md
+                    max_cell = [self.belief_array[imp_i][imp_j], [imp_i, imp_j]]
 
 
-
+    def start_algorithm(self, status):
         self.board_array = np.zeros((self.row, self.col), dtype=int)
-
         self.board_array_for_agent_info = np.copy(self.board_array)
-
         pygame.display.set_caption("Search and Destroy", "SD")
         pygame.display.flip()
-
         self.generate_board()
-
         # Now that everything is set up for the environment
         random_index_i = random.randint(0,self.dimension)
         if random_index_i == len(self.original_board_array):
@@ -386,10 +515,22 @@ class start:
             random_index_j = random_index_j - 1
         self.set_target_cell(random_index_i , random_index_j)
 
-        #self.start_rule_one()
+        if status == "One":
+            self.start_rule_one()
 
-        #self.start_rule_two()
+        if status == "Two":
+            self.start_rule_two()
 
-        self.start_rule_md()
+        if status == "f_One":
+            self.start_rule_md('One')
+
+        if status == "f_Two":
+            self.start_rule_md('Two')
+
+        if status == "f_Three":
+            self.start_rule_md('Three')
+
+        if status == "Own":
+            self.start_rule_own('Three')
 
         pygame.display.flip()
