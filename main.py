@@ -3,24 +3,28 @@ import startprgm
 import tkinter as tk
 import numpy as np
 import time
-import genData
 from ast import literal_eval
 
 row = 10  # row
 col = 10  # col
-#mine_density = 20
 
 if __name__ == '__main__':
 
     pygame.init()  # initializes the pygame object - Required to run the window on screen
-    resolution = (500,500) #(420, 420)  # screen resolution
-    dimension_board = 15
 
     row = int(row)
     col = row
-    dimension_board = int(dimension_board)
 
-    def open_win():
+    def open_win(dim):
+        if dim == 50 :
+            resolution = (650, 650)
+        elif dim == 15:
+            resolution = (200, 200)
+        else:
+            resolution = (800, 800)
+
+        dimension_board = dim
+        dimension_board = int(dimension_board)
         flags = pygame.DOUBLEBUF
         ThingsToAppearOnScreen_Display = pygame.display.set_mode(resolution,
                                                                  flags)  # This sets the width and height of the screen that pops up
@@ -30,32 +34,32 @@ if __name__ == '__main__':
 
 
     def One():
-        m = open_win()
+        m = open_win(50)
         m.start_algorithm("One")
         continue_process()
 
     def Two():
-        m = open_win()
+        m = open_win(50)
         m.start_algorithm("Two")
         continue_process()
 
     def f_One():
-        m = open_win()
+        m = open_win(15)
         m.start_algorithm("f_One")
         continue_process()
 
     def f_Two():
-        m = open_win()
+        m = open_win(15)
         m.start_algorithm("f_Two")
         continue_process()
 
     def f_Three():
-        m = open_win()
+        m = open_win(15)
         m.start_algorithm("f_Three")
         continue_process()
 
     def Own():
-        m = open_win()
+        m = open_win(15)
         m.start_algorithm("Own")
         continue_process()
 
@@ -88,9 +92,9 @@ if __name__ == '__main__':
     b6.pack(side="top")
     root.mainloop()
 
-    # #To generate graphs
+    #To generate graphs
     # g = genData.generateData()
     # g.strategy_one()
     # g.strategy_Two()
-    # # g.strategy_Own()
-    # # g.avg_of_all()
+    # g.strategy_Own()
+    # g.avg_of_all()

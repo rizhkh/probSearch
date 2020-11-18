@@ -48,9 +48,6 @@ class start:
         self.cell_distance_array_cost = np.zeros((self.dimension, self.dimension), dtype=float)
 
 
-    def get_arr(self):
-        return self.board_array
-
     def generate_tiles_gui(self, prob, i , j):
 
         # orignal board array stores 4 values through out its 2d array this vales
@@ -220,7 +217,7 @@ class start:
         while True:
             iteration_count += 1
             max_cell = self.get_max_val( self.belief_array )
-            print(max_cell[1] , " | " , self.target_cell)
+            print("Current cell: ", max_cell[1], " :", max_cell[0])
 
             if max_cell[1] == self.target_cell: # checks if highest prob cell is target cell
                 if self.cell_obs(max_cell[1],'fneg') == True: #False:
@@ -239,7 +236,7 @@ class start:
         while True:
             iteration_count += 1
             max_cell = self.get_max_val( self.belief_array )
-            print(max_cell[1] , " | " , self.target_cell)
+            print("Current cell: ", max_cell[1], " :", max_cell[0])
             if max_cell[1] == self.target_cell: # checks if highest prob cell is target cell
                 if self.cell_obs(max_cell[1],'prb_tar') == True: #False:
                     print("Target Found in Iteration: " , iteration_count)
@@ -286,7 +283,7 @@ class start:
             # Setting the value of current cells cost as we do not want to be confused in future computations
             self.cell_distance_array_cost[ cell_position[0] ][ cell_position[1] ] = 99999
 
-            print("CURRENT PROCESSED CELL: ", max_cell[1], " :" , max_cell[0])
+            print("Current cell: ", max_cell[1], " :", max_cell[0])
 
             # if max_cell[1] == self.target_cell and self.cell_obs(max_cell[1],'fneg') == True:
             if max_cell[1] == self.target_cell:
@@ -423,7 +420,7 @@ class start:
                     self.cell_distance_array_cost[i][j] = (abs(i - cell_position[0]) + abs(j - cell_position[1]))
             # Setting the value of current cells cost as we do not want to be confused in future computations
             self.cell_distance_array_cost[cell_position[0]][cell_position[1]] = 99999
-            print("CURRENT PROCESSED CELL: ", max_cell[1], " :", max_cell[0])
+            print("Current cell: ", max_cell[1], " :", max_cell[0])
             if max_cell[1] == self.target_cell:
                 # if status == "One":
                 #     if self.cell_obs(max_cell[1], 'fneg') == True:
@@ -480,8 +477,8 @@ class start:
                         if br_val not in vis:
                             vis.append(br_val)
                             check = 1
-                        # if br_val in vis:
-                        #     self.cell_distance_array[imp_i][imp_j] = self.cell_distance_array[imp_i][imp_j] + 10
+                        if br_val in vis:
+                            self.cell_distance_array[imp_i][imp_j] = 1000
                 else:
                     vis.append(br_val)
 
